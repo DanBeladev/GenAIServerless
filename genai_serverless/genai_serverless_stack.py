@@ -23,45 +23,25 @@ class GenaiServerlessStack(Stack):
             description='LLM Layer includes libs for using llm logic'
         )
 
-        # Create the Lambda function
-        self.chat_handler = _lambda.Function(
-            self, 'MyLambdaFunction',
-            runtime=_lambda.Runtime.PYTHON_3_11,
-            handler='lambda_handler.handler',
-            code=_lambda.Code.from_asset('genai_serverless/lambda'),
-            environment={
-                "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY"),
-                "TELEGRAM_BOT_TOKEN": os.environ.get("TELEGRAM_TOKEN"),
-                "TELEGRAM_CHAT_ID": os.environ.get("TELEGRAM_CHAT_ID")
-            },
-            timeout=Duration.minutes(3),
-            layers=[self.layer]
+        # Define Lambda function for handling chat
+        self.chat_handler = self.create_lambda_function(
+            'MyLambdaFunction',
+            'lambda_handler.handler',
+            ['OPENAI_API_KEY', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID'],
+            Duration.minutes(3)
         )
-        fn_url = self.chat_handler.add_function_url(auth_type=_lambda.FunctionUrlAuthType.NONE)
 
-        # Create the Lambda function for setting the Telegram webhook
-        set_webhook_function = _lambda.Function(
-            self, 'SetWebhookFunction',
-            runtime=_lambda.Runtime.PYTHON_3_11,
-            handler='set_telegram_webhook.handler',
-            code=_lambda.Code.from_asset('genai_serverless/lambda'),
-            environment={
-                "TELEGRAM_BOT_TOKEN": os.environ.get("TELEGRAM_TOKEN"),
-            },
-            layers=[self.layer],
-            timeout=Duration.seconds(30),
+        # Define Lambda function for setting the Telegram webhook
+        self.set_webhook_function = self.create_lambda_function(
+            'SetWebhookFunction',
+            'set_telegram_webhook.handler',
+            ['TELEGRAM_TOKEN'],
+            Duration.seconds(30)
         )
-        # Create an IAM role with the necessary permissions
-        role = iam.Role(
-            self, 'CustomResourceRole',
-            assumed_by=iam.ServicePrincipal('lambda.amazonaws.com')
-        )
-        role.add_to_policy(
-            iam.PolicyStatement(
-                actions=['lambda:InvokeFunction'],
-                resources=[set_webhook_function.function_arn]
-            )
-        )
+
+        # Create IAM role for Lambda function
+        role = self.create_lambda_role(self.set_webhook_function)
+
         # Add the custom resource
         cr.AwsCustomResource(
             self, 'SetWebhook',
@@ -69,10 +49,11 @@ class GenaiServerlessStack(Stack):
                 'service': 'Lambda',
                 'action': 'invoke',
                 'parameters': {
-                    'FunctionName': set_webhook_function.function_name,
+                    'FunctionName': self.set_webhook_function.function_name,
                     'Payload': json.dumps({
                         'ResourceProperties': {
-                            'FunctionUrl': fn_url.url
+                            'FunctionUrl': self.chat_handler.add_function_url(
+                                auth_type=_lambda.FunctionUrlAuthType.NONE).url
                         }
                     })
                 },
@@ -81,3 +62,29 @@ class GenaiServerlessStack(Stack):
             policy=cr.AwsCustomResourcePolicy.from_sdk_calls(resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE),
             role=role
         )
+
+    def create_lambda_function(self, function_id, handler, environment_variables, timeout):
+        return _lambda.Function(
+            self,
+            function_id,
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            handler=handler,
+            code=_lambda.Code.from_asset('genai_serverless/lambda'),
+            environment={env: os.environ.get(env) for env in environment_variables},
+            timeout=timeout,
+            layers=[self.layer]
+        )
+
+    def create_lambda_role(self, lambda_function):
+        role = iam.Role(
+            self,
+            'CustomResourceRole',
+            assumed_by=iam.ServicePrincipal('lambda.amazonaws.com')
+        )
+        role.add_to_policy(
+            iam.PolicyStatement(
+                actions=['lambda:InvokeFunction'],
+                resources=[lambda_function.function_arn]
+            )
+        )
+        return role

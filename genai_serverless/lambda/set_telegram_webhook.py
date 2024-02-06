@@ -13,8 +13,9 @@ def handler(event, context):
             'body': response
         }
     except Exception as e:
-        print(f"Error: {e}")
+        error_message = str(e)
+        print(f"Error: {error_message}")
         return {
             'statusCode': 500,
-            'body': str(e)
+            'body': error_message
         }

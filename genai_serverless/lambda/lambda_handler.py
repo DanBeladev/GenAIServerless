@@ -11,13 +11,13 @@ from langchain.memory import ConversationBufferMemory
 memory = ConversationBufferMemory(memory_key="chat_history")
 
 
-def extract_message(event) -> str:
+def extract_message(event: dict) -> str:
     body = json.loads(event['body'])
-    message = body["message"]["text"]
-    return message
+    return body.get("message", {}).get("text", "")
 
 
-def invoke_model(message):
+def invoke_model(question: str) -> str:
+    """Invokes the language model."""
     llm = OpenAI(temperature=0)
     template = """You are a nice chatbot having a conversation with a human.
 
@@ -33,28 +33,26 @@ def invoke_model(message):
         verbose=True,
         memory=memory
     )
-    model_response = conversation({"question": message})
-    response = model_response["text"]
-
-    print(f"response: {response}")
-    return response
+    model_response = conversation({"question": question})
+    return model_response["text"]
 
 
-def create_response(model_response: str) -> dict:
-    response = {
+def create_response(message: str) -> dict:
+    """Creates HTTP response object."""
+    return {
         'statusCode': 200,
-        'body': json.dumps({'message': model_response})
+        'body': json.dumps({'message': message})
     }
-    return response
 
 
-def send_telegram_message(response: str) -> None:
-    print(f'sending message to telegram: {response}')
+def send_telegram_message(message: str) -> None:
+    """Sends message to Telegram."""
+    print(f'sending message to Telegram: {message}')
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     # Split the response into chunks of 4096 characters
-    response_chunks = [response[i:i + 4096] for i in range(0, len(response), 4096)]
-    for chunk in response_chunks:
+    message_chunks = [message[i:i + 4096] for i in range(0, len(message), 4096)]
+    for chunk in message_chunks:
         if chunk.strip():
             encoded_chunk = parse.quote_plus(chunk)
             print(f'encoded chunk: {encoded_chunk}')
@@ -72,9 +70,10 @@ def handler(event, context):
         response: dict = create_response(model_response)
         return response
     except Exception as e:
-        print(f"Error: {e}")
-        send_telegram_message(str(e))
+        error_message = str(e)
+        print(f"Error: {error_message}")
+        send_telegram_message(error_message)
         return {
             'statusCode': 500,
-            'body': json.dumps({'message': str(e)})
+            'body': json.dumps({'message': error_message})
         }
