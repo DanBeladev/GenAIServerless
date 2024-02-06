@@ -3,7 +3,7 @@ import os
 from aws_cdk import (
     Stack,
     aws_lambda as _lambda,
-    Duration, CfnOutput, custom_resources as cr, aws_iam as iam
+    Duration, custom_resources as cr, aws_iam as iam
 )
 
 from constructs import Construct
@@ -39,8 +39,6 @@ class GenaiServerlessStack(Stack):
         )
         fn_url = self.chat_handler.add_function_url(auth_type=_lambda.FunctionUrlAuthType.NONE)
 
-        print(f"function url: {fn_url.url}")
-        CfnOutput(self, "TheUrl", value=fn_url.url)
         # Create the Lambda function for setting the Telegram webhook
         set_webhook_function = _lambda.Function(
             self, 'SetWebhookFunction',
