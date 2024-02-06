@@ -1,4 +1,5 @@
 aws-cdk-lib
 constructs>=10.0.0,<11.0.0
 langchain
+langchain_openai
 openai

@@ -4,6 +4,11 @@ from urllib import parse
 
 import requests
 from langchain_openai.llms import OpenAI
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
+
+memory = ConversationBufferMemory(memory_key="chat_history")
 
 
 def extract_message(event) -> str:
@@ -13,10 +18,26 @@ def extract_message(event) -> str:
 
 
 def invoke_model(message):
-    llm = OpenAI(temperature=0.9)  # model_name="text-davinci-003"
-    model_response: str = llm.invoke(input=message)
-    print(f"model_response: {model_response}")
-    return model_response
+    llm = OpenAI(temperature=0)
+    template = """You are a nice chatbot having a conversation with a human.
+
+    Previous conversation:
+    {chat_history}
+
+    New human question: {question}
+    Response:"""
+    prompt = PromptTemplate.from_template(template)
+    conversation = LLMChain(
+        llm=llm,
+        prompt=prompt,
+        verbose=True,
+        memory=memory
+    )
+    model_response = conversation({"question": message})
+    response = model_response["text"]
+
+    print(f"response: {response}")
+    return response
 
 
 def create_response(model_response: str) -> dict:
