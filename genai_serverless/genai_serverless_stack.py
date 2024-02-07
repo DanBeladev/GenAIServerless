@@ -30,6 +30,7 @@ class GenaiServerlessStack(Stack):
             ['OPENAI_API_KEY', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID'],
             Duration.minutes(3)
         )
+        fn_url = self.chat_handler.add_function_url(auth_type=_lambda.FunctionUrlAuthType.NONE)
 
         # Define Lambda function for setting the Telegram webhook
         self.set_webhook_function = self.create_lambda_function(
@@ -52,8 +53,7 @@ class GenaiServerlessStack(Stack):
                     'FunctionName': self.set_webhook_function.function_name,
                     'Payload': json.dumps({
                         'ResourceProperties': {
-                            'FunctionUrl': self.chat_handler.add_function_url(
-                                auth_type=_lambda.FunctionUrlAuthType.NONE).url
+                            'FunctionUrl': fn_url.url
                         }
                     })
                 },

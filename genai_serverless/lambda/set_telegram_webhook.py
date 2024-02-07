@@ -5,7 +5,7 @@ import requests
 def handler(event, context):
     try:
         function_url = event['ResourceProperties']['FunctionUrl']
-        telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        telegram_token = os.environ.get("TELEGRAM_TOKEN")
         response = requests.get(f'https://api.telegram.org/bot{telegram_token}/setWebhook?url={function_url}')
         print(f"response: {response}")
         return {
