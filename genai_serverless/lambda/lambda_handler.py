@@ -48,7 +48,7 @@ def create_response(message: str) -> dict:
 def send_telegram_message(message: str) -> None:
     """Sends message to Telegram."""
     print(f'sending message to Telegram: {message}')
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     # Split the response into chunks of 4096 characters
     message_chunks = [message[i:i + 4096] for i in range(0, len(message), 4096)]
