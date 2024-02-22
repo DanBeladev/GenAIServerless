@@ -1,89 +1,70 @@
-# Building a Serverless LangChain-Powered Telegram Q&A Bot: A Step-by-Step Guide
+How To Build a Serverless LangChain-Powered Telegram Q&A Bot
 
-# Introduction
+LangChain is a framework for developing applications powered by language models that you can use to create your own LangChain-based Telegram bot.
+I will share some personal insights I have learned from creating my own Telegram bot, along with a template for creating a Serverless application using AWS CDK and LangChain. You can use the template in its entirety or in parts. We will also introduce a private Telegram channel that you can use to ask questions and receive answers from an AI model customized to suit your needs.
 
-In this blog post, I will walk you through the process of creating your own LangChain-based Telegram bot. LangChain is a ***framework for developing applications powered by language models***. I will share some personal insights along the way.
-I will present a template for creating a serverless application using AWS CDK and LangChain.
-The template can be used in its entirety or in parts. Additionally, we have introduced a private Telegram channel that can be used to ask questions and receive answers from an AI model customized to suit your needs.
+Create a Serverless Application Using AWS CDK as IaC
+For this purposes of this post, we focus on implementing a Serverless application using AWS CDK as infrastructure as code (IaC), rather than the design or handling of all security issues.
 
-## **Create a serverless application using AWS CDK as IaC**
+An flow diagram and architecture
+Before we get started on this, however, you’ll need:
 
-Our primary focus in this post is on the implementation of a serverless application using AWS CDK as infrastructure as code, rather than the design or handling all security issues.
+An AWS account
+The AWS CDK Toolkit (for this post, I used version 2.118.0)
+Python 3.11 or above
+An OpenAI API key
+Configure AWS account with credentials
+Create a Telegram bot and save the token and chat id for later use of the API
+To investigate the Chat ID, you can use your token to get Telegram updates.
 
-![langchain-blog.drawio.png](Building%20a%20Serverless%20LangChain-Powered%20Telegram%20Q%20948a3b5a345844ca8ecd84f802e2ecb0/langchain-blog.drawio.png)
+Send a text message of your choice to your bot in the Telegram application. After one message in you chat history, you’ll receive your chat ID
 
-# Prerequisites
+Then, refresh your browser.
+Identify the numerical chat ID by finding the ID inside the chat JSON object. In the example below, the chat ID is “123456789”
 
-- An [Aws account](https://docs.aws.amazon.com/accounts/latest/reference/manage-acct-creating.html)
-- The AWS CDK Toolkit (for this blog, I used version 2.118.0). More information can be found [here](https://docs.aws.amazon.com/cdk/v2/guide/cli.html)
-- [Python 3.11 or above](https://www.python.org/downloads/)
-- Create an OpenAI API key [here](https://platform.openai.com/api-keys).
-- Configure AWS account with credentials. [For more information on how to configure your AWS account, please refer to the official Amazon documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
-- Create a Telegram bot and save the token and chat id for later use of the API. [You can learn how to create a Telegram bot and get its token by following the instructions provided on this page](https://sendpulse.com/knowledge-base/chatbot/telegram/create-telegram-chatbot).
-    - To investigate the chat id, you can use your token and surf in the browser to
-        
-        ```python
-        https://api.telegram.org/bot<API-access-token>/getUpdates?offset=0
-        ```
-        
-    - Send a message to your bot in the Telegram application. The message text can be anything. Your chat history must include at least one message to get your chat ID.
-    - Refresh your browser.
-    - Identify the numerical chat ID by finding the `id` inside the `chat` JSON object. In the example below, the chat ID is `123456789`.
-        
-        
-        ```jsx
+{
+    "ok": true,
+    "result": [
         {
-            "ok": true,
-            "result": [
-                {
-                    "update_id": 123456789,
-                    "message": {
-                        "message_id": 1,
-                        "from": {
-        									....
-                        },
-                        "chat": {
-                            "id": 123456789,
-        										....
-                        },
-        							....
-                    }
-                }
-            ]
+            "update_id": 123456789,
+            "message": {
+                "message_id": 1,
+                "from": {
+         ....
+                },
+                "chat": {
+                    "id": 123456789,
+          ....
+                },
+       ....
+            }
         }
-        ```
-        
+    ]
+}
+Let’s Get Started
+Here’s how to get started creating your own generative AI bot:
 
-# Challenges
+Check out the template code from the following Sample GitHub repository.
+Create an .env file in the root directory of your project with the secrets you created earlier.
+This file should contain the following variables:
 
-In order to overcome the 50MB hard limit for zipped Lambda deployment, we are using Lambda Layer to separate the core function logic from dependencies. This allows us to use LangChain, which is currently over 50MB, as the AI framework for our serverless application. Lambda Layer can accommodate a maximum of 250MB for your package, making it an ideal solution for our needs. Additionally, using layers allows us to share dependencies across multiple functions, making our application more efficient and scalable.
+OPENAI_API_KEY: Your OpenAI API key.
 
-[https://giphy.com/embed/B5d9Sezw8rEHNxsc46](https://giphy.com/embed/B5d9Sezw8rEHNxsc46)
+TELEGRAM_BOT_TOKEN: Your Telegram bot token.
 
-## Let’s Get started
+TELEGRAM_CHAT_ID: The chat ID of your Telegram channel.
 
-Here are the steps to create your own generative ai bot:
-
-- Check out the template code from the following  [Gihub repository](https://github.com/DanBeladev/GenAIServerless).
-- Create an **`.env`** file in the root directory of your project with the secrets you created earlier. This file should contain the following variables:
-    - **`OPENAI_API_KEY`**: Your OpenAI API key.
-    - **`TELEGRAM_BOT_TOKEN`**: Your Telegram bot token.
-    - **`TELEGRAM_CHAT_ID`**: The chat ID of your Telegram channel.
-    
-    Please note that the **`.env`** file should not be committed to your version control system, as it contains sensitive information.
-    
-
-## Dive in to the CDK code
-
+Please note that the .env file should not be committed to your version control system, as it contains sensitive information.
+Diving into the CDK Code
 In the following “GenaiServerlessStack” stack, we instantiate two Lambda functions: one dedicated to managing client questions and another responsible for configuring the Telegram webhook.
 
-Utilizing a custom resource, we establish a Telegram webhook to facilitate the transmission of messages from the Telegram client to our Lambda function URL. Concurrently, we generate a role endowed with invoke permissions tailored for the custom resource.
+We then complete the following steps:
 
-Furthermore, we construct a Layer encompassing essential dependencies and integrate it seamlessly with the Lambda functions.
+Establish a Telegram webhook to facilitate the transmission of messages from the Telegram client to our Lambda function URL using a custom resource.
+Generate a role endowed with invoke permissions tailored for the custom resource.
+Construct a Layer encompassing essential dependencies and integrate it seamlessly with the Lambda functions.
+# genai_serverless_stack.py
 
-**genai_serverless_stack.py**
-
-```python
 import json
 import os
 from aws_cdk import (
@@ -96,6 +77,7 @@ from constructs import Construct
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 class GenaiServerlessStack(Stack):
 
@@ -115,6 +97,7 @@ class GenaiServerlessStack(Stack):
             ['OPENAI_API_KEY', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID'],
             Duration.minutes(3)
         )
+        fn_url = self.chat_handler.add_function_url(auth_type=_lambda.FunctionUrlAuthType.NONE)
 
         # Define Lambda function for setting the Telegram webhook
         self.set_webhook_function = self.create_lambda_function(
@@ -137,8 +120,7 @@ class GenaiServerlessStack(Stack):
                     'FunctionName': self.set_webhook_function.function_name,
                     'Payload': json.dumps({
                         'ResourceProperties': {
-                            'FunctionUrl': self.chat_handler.add_function_url(
-                                auth_type=_lambda.FunctionUrlAuthType.NONE).url
+                            'FunctionUrl': fn_url.url
                         }
                     })
                 },
@@ -173,15 +155,16 @@ class GenaiServerlessStack(Stack):
             )
         )
         return role
-```
+Using Lambda Layer
+AWS Lambda enforces a strict 50 MB deployment limit for zipped packages. This constraint includes both your function code and its dependencies (e.g., libraries, frameworks, etc). Exceeding this limit leads to deployment issues. Lambda Layers allow you to separate your core function logic from dependencies. By creating a Lambda Layer, you keep your function code lightweight while moving larger dependencies (such as AI frameworks like LangChain) into the layer. Lambda Layers provide up to 250 MB of storage space, making it an ideal solution for managing substantial dependencies.
 
-## Lambda functions code
+With Lambda Layers, your core function code remains small, and only necessary dependencies load at runtime. It also enables dependency reuse across multiple Lambda functions within the same AWS account.
 
-Our Lambda Function handler will catch the webhook event and extract the question from the schema. It is important to note that we are saving the memory conversation in the Lambda context while the Lambda is running to make the conversation with the chatbot more engaging and to maintain a history of the conversation. Each Lambda can work with only one channel to avoid confusion between conversations. Finally, the Lambda will ask the LLM about the question and respond to the user by sending a message to the Telegram channel using the Telegram API.
+Implementing Lambda Functions Code
+Our Lambda Function handler catches the webhook event and extracts the question from the schema. It is important to note that we are saving the memory conversation in the Lambda context while the Lambda is running to make the conversation with the chatbot more engaging and to maintain a history of the conversation. Each Lambda works with only one channel to avoid confusion between conversations. Finally, the Lambda asks the LLM about the question and responds to the user by sending a message to the Telegram channel using the Telegram API.
 
-**lambda_handler.py**
+# lambda_handler.py
 
-```python
 import json
 import os
 from urllib import parse
@@ -194,9 +177,11 @@ from langchain.memory import ConversationBufferMemory
 
 memory = ConversationBufferMemory(memory_key="chat_history")
 
+
 def extract_message(event: dict) -> str:
     body = json.loads(event['body'])
     return body.get("message", {}).get("text", "")
+
 
 def invoke_model(question: str) -> str:
     """Invokes the language model."""
@@ -218,6 +203,7 @@ def invoke_model(question: str) -> str:
     model_response = conversation({"question": question})
     return model_response["text"]
 
+
 def create_response(message: str) -> dict:
     """Creates HTTP response object."""
     return {
@@ -225,10 +211,11 @@ def create_response(message: str) -> dict:
         'body': json.dumps({'message': message})
     }
 
+
 def send_telegram_message(message: str) -> None:
     """Sends message to Telegram."""
     print(f'sending message to Telegram: {message}')
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     # Split the response into chunks of 4096 characters
     message_chunks = [message[i:i + 4096] for i in range(0, len(message), 4096)]
@@ -240,6 +227,7 @@ def send_telegram_message(message: str) -> None:
             print(f'api => {api_url}')
             send_message_response = requests.post(api_url)
             print(f'send_message_response: {send_message_response.text}')
+
 
 def handler(event, context):
     try:
@@ -256,18 +244,16 @@ def handler(event, context):
             'statusCode': 500,
             'body': json.dumps({'message': error_message})
         }
-```
+# set_telegram_webhook.py
 
-**set_telegram_webhook.py**
-
-```python
 import os
 import requests
+
 
 def handler(event, context):
     try:
         function_url = event['ResourceProperties']['FunctionUrl']
-        telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        telegram_token = os.environ.get("TELEGRAM_TOKEN")
         response = requests.get(f'https://api.telegram.org/bot{telegram_token}/setWebhook?url={function_url}')
         print(f"response: {response}")
         return {
@@ -281,29 +267,19 @@ def handler(event, context):
             'statusCode': 500,
             'body': error_message
         }
-```
+Deployment
+To deploy your stack:
 
-# Deployment
+Create a virtual environment and install the development requirements using the following command:
+pip install -r requirements-dev.txt
 
-To deploy your stack, follow these steps:
+Configure your AWS credentials and set up the .env file with your secrets.
+Run the deploy.py file from your project directory:
+This will install the dependencies required for the layer and deploy your. stack with all the resources.
+After a successful deployment, you can access the stack resources inside the CloudFormation service.
+AWS Cloudformation stack resources view
+Running “deploy.py” and then run cdk synth and deploy and the resource created.
+Introducing Our New Digital Friend
+Your Serverless application bot is now up and running! You can test it out by asking questions in your Telegram channel and receiving answers from the AI model. I hope you found our dive into a GenAI application, using serverless technology in parallel with third-party frameworks such as LangChain, enlightening and that it this has piqued your interest in exploring the creation of your own custom chatbot app.
 
-1. Create a virtual environment and install the development requirements using the following command:
-
-> pip install -r requirements-dev.txt
-> 
-1.  Configure your AWS credentials and set up the **`.env`** file with your secrets.
-2. Run the **`deploy.py`** file from your project directory:
-    
-    This will install the dependencies required for the layer and deploy your stack with all the resources.
-    
-3. After a successful deployment, you can access the stack resources inside the CloudFormation service.
-
-![Untitled](Building%20a%20Serverless%20LangChain-Powered%20Telegram%20Q%20948a3b5a345844ca8ecd84f802e2ecb0/Untitled.png)
-
-![cdk-deploy.drawio.png](Building%20a%20Serverless%20LangChain-Powered%20Telegram%20Q%20948a3b5a345844ca8ecd84f802e2ecb0/cdk-deploy.drawio.png)
-
-# Final result
-
-Your serverless application bot is now up and running! You can test it out by asking questions in your Telegram channel and receiving answers from the AI model.
-
-![Untitled](Building%20a%20Serverless%20LangChain-Powered%20Telegram%20Q%20948a3b5a345844ca8ecd84f802e2ecb0/Untitled%201.png)
+chat with ai bot in telegram conversation
